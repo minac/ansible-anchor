@@ -18,6 +18,8 @@ In vars/main.yml you can find two variables:
 
 - mysql_user
 - mysql_password
+- mysql_user_home
+- anchor_version: "0.12.1"
 
 
 Dependencies
