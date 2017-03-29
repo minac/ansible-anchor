@@ -1,2 +1,6 @@
 ---
 # vars file for ansible-anchor
+mysql_user: root
+mysql_pass: changeme
+mysql_user_home: /root/
+anchor_version: "0.12.1"

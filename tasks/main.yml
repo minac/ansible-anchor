@@ -1,2 +1,90 @@
 ---
 # tasks file for ansible-anchor
+- name: Setup - Set hostname
+  hostname: name=anchor
+
+- name: Setup - Update and upgrade packages using apt
+  apt: update_cache=yes cache_valid_time=3600 upgrade=yes
+
+- name: Setup - Install required packages for anchor
+  apt: pkg={{ item }} state=latest
+  with_items:
+      - unzip 
+      - vim 
+      - apache2 
+      - libapache2-mod-php5 
+      - mysql-server 
+      - php5-curl 
+      - php5-mcrypt 
+      - php5-gd 
+      - php5-mysql
+      - ufw 
+      - python-mysqldb
+
+- name: MySQL - Ensure MySQL is running and enabled on startup
+  service: name=mysql state=started enabled=true
+
+- name: MySQL - Update MySQL Root Password
+  mysql_user: name={{ mysql_user }} host={{ item }} password={{ mysql_pass }}
+  with_items:
+    - "{{ ansible_hostname }}"
+    - 127.0.0.1
+    - ::1
+    - localhost
+  notify: Restart mysql
+
+- name: MySQL - Setup .my.cnf file for database access
+  template: src=my.cnf.j2 dest={{ mysql_user_home }}/.my.cnf mode=0600
+  notify: Restart mysql
+
+- name: MySQL - Remove anonymous users
+  mysql_user: name='' host={{item}} state=absent
+  with_items:
+    - localhost
+    - "{{ansible_hostname}}"
+  notify: Restart mysql
+
+- name: MySQL - Remove test database
+  mysql_db: name=test state=absent
+  notify: Restart mysql
+
+- name: MySQL - Create anchor database
+  mysql_db: name=anchor state=present
+  notify: Restart mysql
+
+- name: Firewall - Allow ssh through firewall
+  ufw: proto=tcp port=22 rule=allow
+
+- name: Firewall - Allow http through firewall
+  ufw: proto=tcp port=80 rule=allow
+
+- name: Firewall - Set ufw policy
+  ufw: state=enabled direction=incoming policy=deny
+
+- name: Anchor - Clean apache's index.html
+  file: path=/var/www/html/index.html state=absent
+
+- name: Anchor - Get anchor and uncompress
+  unarchive: src=https://github.com/anchorcms/anchor-cms/releases/download/{{ anchor_version }}/anchor-cms-{{ anchor_version }}-bundled.zip dest=/var/www/html remote_src=yes
+
+- name: Anchor - Clean the archive
+  file: path=/var/www/html/anchor-cms-{{ anchor_version }}-bundled.zip state=absent
+
+- name: Anchor - Change permissions and ownership of blog
+  file: path=/var/www/html/anchor-cms state=directory recurse=yes owner=www-data group=www-data
+
+- name: Anchor - Allow .htaccess in apache2
+  lineinfile: dest=/etc/apache2/apache2.conf regexp='^\tAllowOverride None$' insertbefore='^\s*AllowOverride None$' line='AllowOverride All'
+  notify: Restart apache
+
+- name: Anchor - Set apache up with correct Document Root
+  lineinfile: dest=/etc/apache2/sites-available/000-default.conf regexp='^\sDocumentRoot /var/www/html$' line='DocumentRoot /var/www/html/anchor-cms'
+  notify: Restart apache
+
+- name: Anchor - Enable mod_rewrite in apache2
+  apache2_module: state=present name=rewrite
+  notify: Restart apache
+
+- name: Anchor - Copy .htaccess file to client
+  copy: src=htaccess dest=/var/www/html/anchor-cms/.htaccess owner=root group=root mode=0644
+  notify: Restart apache
