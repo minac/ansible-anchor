@@ -2,7 +2,7 @@
 Ansible Anchor
 =========
 
-A deployment of anchor CMS with Ansible and Vagrant.
+A deployment of Anchor CMS with Ansible and Vagrant.
 
 
 Requirements
@@ -19,7 +19,8 @@ In vars/main.yml you can find two variables:
 - mysql_user
 - mysql_password
 - mysql_user_home
-- anchor_version: "0.12.1"
+- anchor_version
+
 
 
 Dependencies
@@ -31,12 +32,12 @@ N/A
 Example Playbook
 ----------------
 
-Including an example of how to use your role (for instance, with variables passed in as parameters) is always nice for users too:
-
-    - hosts: all
-      become: true
-      roles:
-         - { role: minac.ansible-anchor }
+```yaml
+- hosts: all
+  become: true
+  roles:
+     - { role: minac.anchor }
+```
 
 
 License
